@@ -1,10 +1,10 @@
 # Auditor
 
-A Claude Code plugin that audits any codebase from 8 expert perspectives in parallel. One command deploys a virtual development team — Principal Architect, Security Engineer, Staff Engineer, SRE, QA Lead, DX Lead, plus 2 dynamic specialists — each independently exploring the actual code. Findings are merged into a single prioritized report with actionable fix directions.
+A Claude Code plugin that audits any codebase from 8 expert perspectives in parallel. One command deploys a virtual development team — Principal Architect, Security Engineer, Staff Engineer, SRE, QA Lead, DX Lead, plus 2 dynamic specialists — each independently exploring the actual code. Findings are saved to a detailed report file; the chat gets a concise summary. Then say `fix #3` and Claude implements the fix.
 
 No configuration. No external dependencies. No API keys.
 
-**Version:** 1.0.0 | **License:** MIT
+**Version:** 2.0.0 | **License:** MIT
 
 ---
 
@@ -14,6 +14,7 @@ No configuration. No external dependencies. No API keys.
 - [Installation](#installation)
 - [How to Use It](#how-to-use-it)
 - [What You Get](#what-you-get)
+- [Features](#features)
 - [Under the Hood](#under-the-hood)
 - [Architecture](#architecture)
 - [Troubleshooting](#troubleshooting)
@@ -34,11 +35,13 @@ Auditor fixes this by forcing Claude into 8 distinct expert roles, each with a s
 
 - **Real code exploration** — each subagent has full read access to your codebase. Findings reference actual files and patterns, not hypothetical concerns.
 
-- **Goal-directed auditing** — optional goal parameter focuses the audit. "security" gets a Penetration Tester and Cryptography Reviewer. "agentic" gets an Agentic Systems Architect and Tool Integration Engineer. No goal runs a general health check.
+- **Report to file, summary to chat** — the full report with all findings, files, and fix directions is saved to `.audit/audit-report.md`. The chat shows only a concise summary with top findings. No context wasted.
 
-- **Unified report** — findings are merged across all reviewers, deduplicated, and sorted by severity. Critical issues first, then standard. Each finding includes a fix direction specific enough for another Claude session to act on.
+- **Fix by number** — after an audit, say `fix #3` and Claude reads the finding from the report file and implements the fix. No copy-pasting, no re-explaining.
 
-- **Weighted scoring** — Architecture and Security count 1.5x in the overall score, because they're the hardest to fix later.
+- **Baseline tracking** — re-run the audit and get a delta: score change, resolved findings, new findings. Track progress over time.
+
+- **Diff-aware mode** — `--diff main` audits only changed files. Fast, focused, great as a pre-merge check.
 
 ---
 
@@ -93,31 +96,11 @@ cd ~/.claude/plugins/marketplaces/auditor && git pull
 
 Then restart Claude Code.
 
-### Common mistakes
-
-| Problem | Fix |
-|---------|-----|
-| Wrong clone location | Must be `~/.claude/plugins/marketplaces/auditor` |
-| `/audit` doesn't appear | Add `"auditor@auditor": true` under `enabledPlugins` |
-| Plugin not detected | Add `extraKnownMarketplaces` entry pointing to the plugin directory |
-| Stale behavior after update | Restart Claude Code to reload SKILL.md |
-
 ---
 
 ## How to Use It
 
-### When to run `/audit`
-
-`/audit` works anywhere in Claude Code — no plan mode required.
-
-```
-/audit <repo> [goal]
-```
-
-- `<repo>` — path or project name (e.g., `~/Desktop/myproject`, `enterprise`, `klauscode`)
-- `[goal]` — optional focus lens: `security`, `performance`, `agentic`, `production-ready`, etc.
-
-### Examples
+### Basic audit
 
 ```
 /audit enterprise production-ready
@@ -126,80 +109,201 @@ Then restart Claude Code.
 /audit library agentic
 ```
 
-### What happens when you type `/audit`
+- `<repo>` — path or project name (resolved via `~/Desktop/<name>/`)
+- `[goal]` — optional focus: `security`, `performance`, `agentic`, `production-ready`, etc.
 
-1. **Discovery** — one agent maps the codebase (language, structure, dependencies, abstractions)
-2. **Team assembly** — 6 core reviewers + 2 dynamic specialists chosen for your codebase and goal
-3. **Parallel audit** — 8 agents launched simultaneously, each exploring the actual code independently
-4. **Unified report** — findings merged, deduplicated, severity-sorted, with fix directions
+### Diff-aware audit
+
+```
+/audit enterprise --diff main
+/audit library security --diff main
+```
+
+Only audits files changed since diverging from the base branch. Much faster, much more focused.
+
+### Fixing findings
+
+After an audit, the report is saved to `.audit/audit-report.md`. Fix findings by number:
+
+```
+fix #3
+fix #1 #4 #7
+fix all critical
+fix all small
+```
+
+Claude reads the finding from the report (Problem, Files, Fix direction, Effort), then implements the fix. Multiple findings that don't overlap on files are fixed in parallel.
+
+### Re-auditing
+
+Run `/audit` again on the same repo and you get a delta:
+
+```
+Score: 7.1/10 (was 5.2/10)
+Resolved: 4 findings
+New: 2 findings
+Persistent: 8 findings
+```
+
+Previous reports are archived as `.audit/audit-report-<date>.md`.
 
 ---
 
 ## What You Get
 
-Here's a sample of what `/audit` produces (abbreviated — real audits are longer):
+### In chat (summary)
 
 ```
-## Audit Report — myproject
-Goal: Production-Ready
-Team: Principal Architect, Security Engineer, Staff Engineer, SRE, QA Lead, DX Lead, Platform Engineer, Database Specialist
-Overall Score: 5.8/10
+## Audit — enterprise (Production-Ready)
 
-### What's Strong
+Score: 5.8/10
+Critical: 3 | Standard: 12
+Report: .audit/audit-report.md
+
+### Top Findings
+
+1. [CRITICAL] SQL injection via string interpolation in 3 endpoints — small
+2. [CRITICAL] No rate limiting on public endpoints — medium
+3. [CRITICAL] Secrets loaded without startup validation — small
+4. [STANDARD] 40% of error paths return generic 500 — medium
+5. [STANDARD] No integration tests, only mocked unit tests — large
+
+... and 10 more in the full report
+
+To fix a finding: "fix #3" or "fix all critical"
+Full report: .audit/audit-report.md
+```
+
+### In file (full report at `.audit/audit-report.md`)
+
+```markdown
+# Audit Report — enterprise
+
+**Date:** 2026-03-24
+**Goal:** Production-Ready
+**Mode:** Full
+**Team:** Principal Architect, Security Engineer, Staff Engineer, SRE, QA Lead, DX Lead, Platform Engineer, Database Specialist
+**Overall Score:** 5.8/10
+
+## What's Strong
+
 - Clean module boundaries with well-defined public API surface
 - Comprehensive error types with context propagation
 - Good use of connection pooling for database access
 
-### Findings
+## Findings
 
-1. [CRITICAL]
+### 1. [CRITICAL]
 
-   Problem: SQL queries constructed via string interpolation in 3 endpoints
+**Problem:** SQL queries constructed via string interpolation in 3 endpoints — format!() used directly with user input in query strings
 
-   Files: src/api/users.rs, src/api/search.rs, src/api/admin.rs
+**Files:** src/api/users.rs, src/api/search.rs, src/api/admin.rs
 
-   Fix: Replace format!() query construction with parameterized queries using the existing QueryBuilder::bind() pattern from src/db/mod.rs
+**Fix:** Replace format!() query construction with parameterized queries using the existing QueryBuilder::bind() pattern from src/db/mod.rs. The bind pattern is already used in 4 other query functions in the same module — follow that pattern.
 
-2. [CRITICAL]
+**Effort:** small
 
-   Problem: No rate limiting on any public endpoint
+---
 
-   Files: src/api/mod.rs, src/middleware/
+### 2. [CRITICAL]
 
-   Fix: Add tower::RateLimit middleware in the router setup at api/mod.rs, start with 60 req/min on auth endpoints
+**Problem:** No rate limiting on any public endpoint — brute force auth attacks trivial
 
-3. [CRITICAL]
+**Files:** src/api/mod.rs, src/middleware/
 
-   Problem: Secrets loaded from environment with no validation at startup
+**Fix:** Add tower::RateLimit middleware in the router setup at api/mod.rs. Start with 60 req/min on /auth/* endpoints, 200 req/min globally. The middleware stack at line 47 of api/mod.rs is where other middleware is composed — add it there.
 
-   Files: src/config.rs, src/main.rs
+**Effort:** medium
 
-   Fix: Add a Config::validate() call in main() before server start — check all required env vars exist, fail with a clear error listing what's missing
+---
 
-4. [STANDARD]
+### 3. [CRITICAL]
 
-   Problem: 40% of error paths return generic 500 with no context
+**Problem:** Secrets loaded from environment with no validation at startup — server starts with missing config and fails on first request
 
-   Files: src/api/error.rs, src/api/users.rs, src/api/search.rs
+**Files:** src/config.rs, src/main.rs
 
-   Fix: Implement From<DomainError> for ApiError in error.rs, map each variant to appropriate HTTP status codes
+**Fix:** Add Config::validate() that checks all required env vars (DATABASE_URL, JWT_SECRET, API_KEY) and returns a Result. Call it in main() before server start. Pattern: check existence, check non-empty, fail with a message listing all missing vars at once.
 
-5. [STANDARD]
+**Effort:** small
 
-   Problem: No integration tests — only unit tests mocking the database
+---
 
-   Files: tests/, src/db/mod.rs
+[... all findings with full detail]
 
-   Fix: Add tests/integration/ with a real SQLite test database, focus on user CRUD and search endpoints first
+## Goal: Production-Ready
 
-[... all findings numbered sequentially]
+**Progress:** 4/10
 
-### Goal: Production-Ready
-Progress: 4/10
 - Exists: solid domain model, clean API design, basic auth
 - Missing: rate limiting, input validation, integration tests, observability, graceful shutdown
 - Top 3: (1) fix SQL injection, (2) add rate limiting + input validation, (3) integration test critical paths
 ```
+
+### On re-audit (delta section appended)
+
+```markdown
+## Delta (vs 2026-03-20)
+
+**Score:** 5.8/10 → 7.1/10 (+1.3)
+**Resolved:** 4 findings
+**New:** 2 findings
+**Persistent:** 9 findings
+
+### Resolved
+- [#1] SQL injection via string interpolation — fixed with parameterized queries
+- [#2] No rate limiting — tower middleware added
+- [#5] Missing startup config validation — Config::validate() added
+- [#8] Unused imports in 12 files — cleaned up
+
+### New
+- [#3] New endpoint /admin/bulk-delete has no authorization check
+- [#11] Migration 005 adds column without default, breaks rollback
+```
+
+---
+
+## Features
+
+### Report to File
+
+The full detailed report is written to `.audit/audit-report.md` in the repo root. The chat gets a compact summary. This means:
+
+- No context window wasted on findings you aren't actively fixing
+- The report persists across sessions — any future Claude session can read it
+- The report file is what `fix #N` reads from
+
+The `.audit/` directory is added to `.gitignore` — audit reports are local artifacts.
+
+### Fix by Number
+
+Each finding in the report is numbered. After an audit:
+
+- `fix #3` — Claude reads finding #3 from the report, understands the problem, files, and fix direction, then implements it
+- `fix #1 #4 #7` — fixes multiple findings, parallelized when they don't touch the same files
+- `fix all critical` — fixes every critical finding
+- `fix all small` — fixes every finding marked as small effort (low-hanging fruit sweep)
+
+No copy-pasting findings, no re-explaining what's wrong. The report file is the contract between the audit and the fix.
+
+### Baseline Tracking
+
+Re-run `/audit` on the same repo and the new report includes a delta section:
+
+- Score change (e.g., 5.8 → 7.1)
+- Which findings were resolved
+- Which findings are new
+- Which findings persist
+
+Previous reports are archived with their date. This turns the audit from a one-shot report into a progress tracker.
+
+### Diff-Aware Mode
+
+`/audit enterprise --diff main` only audits files changed since diverging from `main`:
+
+- Reviewers focus on the diff but can examine unchanged files that interact with changes
+- Much faster — no need to audit the entire codebase for a feature branch
+- Great as a pre-merge quality gate
 
 ---
 
@@ -230,14 +334,18 @@ Every audit gets 6 core reviewers plus 2 dynamic specialists:
 | security | Penetration Tester, Cryptography Reviewer |
 | no goal | Based on what the codebase most needs |
 
-### Severity System
+### Severity & Effort
 
 | Marker | Meaning |
 |--------|---------|
 | `[CRITICAL]` | Must fix — significant risk or broken functionality |
 | `[STANDARD]` | Real issue — fix at your discretion |
 
-Critical findings are listed first in the report.
+| Effort | Meaning |
+|--------|---------|
+| small | A focused fix, likely < 50 lines changed |
+| medium | Requires understanding multiple components, 50-200 lines |
+| large | Architectural change or significant new code, 200+ lines |
 
 ### Scoring
 
@@ -266,6 +374,15 @@ auditor/
             └── SKILL.md               # The entire plugin
 ```
 
+**Generated at runtime (in the audited repo):**
+
+```
+<audited-repo>/
+└── .audit/
+    ├── audit-report.md                # Latest full report
+    └── audit-report-2026-03-20.md     # Archived previous report
+```
+
 ---
 
 ## Troubleshooting
@@ -276,7 +393,8 @@ auditor/
 | `/audit` not appearing as a command | Plugin not enabled | Check `enabledPlugins` in `~/.claude/settings.json` |
 | Plugin not detected at all | Missing marketplace entry | Check `extraKnownMarketplaces` in `~/.claude/settings.json` |
 | Stale behavior after update | Skills cached at session start | Restart Claude Code |
-| Audit feels shallow | Codebase too large for context | Focus with a goal parameter |
+| `fix #N` says "no report found" | No prior audit | Run `/audit` first |
+| Audit feels shallow | Codebase too large for context | Focus with a goal or use `--diff` |
 
 ---
 

@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "auditor",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "source": "./plugin",
       "description": "Full software audit with 8 parallel expert subagents producing a unified findings report"
     }
