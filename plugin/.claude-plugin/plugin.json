@@ -1,0 +1,16 @@
+{
+  "name": "auditor",
+  "version": "1.0.0",
+  "description": "Full software audit with 8 parallel expert subagents producing a unified findings report",
+  "author": {
+    "name": "Charles Chen"
+  },
+  "license": "MIT",
+  "keywords": [
+    "audit",
+    "code-review",
+    "security",
+    "architecture",
+    "quality"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "auditor",
+  "description": "Multi-perspective codebase audit for Claude Code",
+  "owner": {
+    "name": "Charles Chen"
+  },
+  "plugins": [
+    {
+      "name": "auditor",
+      "version": "1.0.0",
+      "source": "./plugin",
+      "description": "Full software audit with 8 parallel expert subagents producing a unified findings report"
+    }
+  ]
+}
