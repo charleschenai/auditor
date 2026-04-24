@@ -7,3 +7,6 @@
 [2026-04-24 06:35] upgrade: fix-mode agent now verifies via project test/build command and auto-reverts on failure
   source: triage - fix mode was fire-and-forget; no guarantee code still compiles
 
+[2026-04-24 06:36] upgrade: add confidence scoring with self-filtering of low-confidence standard findings
+  source: triage - no way to distinguish high-signal findings from hypothetical concerns; reports included noise
+
