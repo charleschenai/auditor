@@ -4,7 +4,7 @@ A Claude Code plugin that audits any codebase from 8 expert perspectives in para
 
 No configuration. No external dependencies. No API keys.
 
-**Version:** 2.0.0 | **License:** MIT
+**Version:** 2.1.0 | **License:** MIT
 
 ---
 
@@ -40,6 +40,8 @@ Auditor fixes this by forcing Claude into 8 distinct expert roles, each with a s
 - **Fix by number** — after an audit, say `fix #3` and Claude reads the finding from the report file and implements the fix. No copy-pasting, no re-explaining.
 
 - **Baseline tracking** — re-run the audit and get a delta: score change, resolved findings, new findings. Track progress over time.
+
+- **Category tags** — every finding is tagged with one or more categories (security, correctness, performance, quality, operational, testing, documentation, architecture). Filter and sweep with `fix all security`, `fix all testing`, or combine with severity: `fix all critical security`.
 
 - **Diff-aware mode** — `--diff main` audits only changed files. Fast, focused, great as a pre-merge check.
 
@@ -130,9 +132,11 @@ fix #3
 fix #1 #4 #7
 fix all critical
 fix all small
+fix all security
+fix all critical security
 ```
 
-Claude reads the finding from the report (Problem, Files, Fix direction, Effort), then implements the fix. Multiple findings that don't overlap on files are fixed in parallel.
+Claude reads the finding from the report (Problem, Files, Fix direction, Effort, Tags), then implements the fix. Multiple findings that don't overlap on files are fixed in parallel. Tag filters and severity filters can be combined — `fix all critical security` sweeps every critical finding tagged `security`.
 
 ### Re-auditing
 
@@ -162,15 +166,17 @@ Report: .audit/audit-report.md
 
 ### Top Findings
 
-1. [CRITICAL] SQL injection via string interpolation in 3 endpoints — small
-2. [CRITICAL] No rate limiting on public endpoints — medium
-3. [CRITICAL] Secrets loaded without startup validation — small
-4. [STANDARD] 40% of error paths return generic 500 — medium
-5. [STANDARD] No integration tests, only mocked unit tests — large
+1. [CRITICAL] [security] SQL injection via string interpolation in 3 endpoints — small
+2. [CRITICAL] [security] No rate limiting on public endpoints — medium
+3. [CRITICAL] [operational] Secrets loaded without startup validation — small
+4. [STANDARD] [operational] 40% of error paths return generic 500 — medium
+5. [STANDARD] [testing] No integration tests, only mocked unit tests — large
 
 ... and 10 more in the full report
 
-To fix a finding: "fix #3" or "fix all critical"
+By category: security (4) · operational (5) · testing (3) · architecture (2) · quality (1)
+
+To fix a finding: "fix #3", "fix all critical", or "fix all security"
 Full report: .audit/audit-report.md
 ```
 
@@ -203,6 +209,8 @@ Full report: .audit/audit-report.md
 
 **Effort:** small
 
+**Tags:** security, correctness
+
 ---
 
 ### 2. [CRITICAL]
@@ -214,6 +222,8 @@ Full report: .audit/audit-report.md
 **Fix:** Add tower::RateLimit middleware in the router setup at api/mod.rs. Start with 60 req/min on /auth/* endpoints, 200 req/min globally. The middleware stack at line 47 of api/mod.rs is where other middleware is composed — add it there.
 
 **Effort:** medium
+
+**Tags:** security
 
 ---
 
@@ -227,9 +237,19 @@ Full report: .audit/audit-report.md
 
 **Effort:** small
 
+**Tags:** operational, security
+
 ---
 
 [... all findings with full detail]
+
+## Findings by Category
+
+- **security:** #1, #2, #3, #7 (4)
+- **operational:** #3, #4, #9 (3)
+- **testing:** #5, #11, #14 (3)
+- **architecture:** #6, #8 (2)
+- **quality:** #12 (1)
 
 ## Goal: Production-Ready
 
@@ -251,14 +271,20 @@ Full report: .audit/audit-report.md
 **Persistent:** 9 findings
 
 ### Resolved
-- [#1] SQL injection via string interpolation — fixed with parameterized queries
-- [#2] No rate limiting — tower middleware added
-- [#5] Missing startup config validation — Config::validate() added
-- [#8] Unused imports in 12 files — cleaned up
+- [#1] [security] SQL injection via string interpolation — fixed with parameterized queries
+- [#2] [security] No rate limiting — tower middleware added
+- [#5] [operational] Missing startup config validation — Config::validate() added
+- [#8] [quality] Unused imports in 12 files — cleaned up
 
 ### New
-- [#3] New endpoint /admin/bulk-delete has no authorization check
-- [#11] Migration 005 adds column without default, breaks rollback
+- [#3] [security] New endpoint /admin/bulk-delete has no authorization check
+- [#11] [correctness] Migration 005 adds column without default, breaks rollback
+
+### By Category
+- **security:** -2 resolved, +1 new (net -1)
+- **operational:** -1 resolved (net -1)
+- **quality:** -1 resolved (net -1)
+- **correctness:** +1 new (net +1)
 ```
 
 ---
@@ -283,8 +309,27 @@ Each finding in the report is numbered. After an audit:
 - `fix #1 #4 #7` — fixes multiple findings, parallelized when they don't touch the same files
 - `fix all critical` — fixes every critical finding
 - `fix all small` — fixes every finding marked as small effort (low-hanging fruit sweep)
+- `fix all security` — fixes every finding tagged `security` (or any other category tag)
+- `fix all critical security` — intersect: every critical finding that is also tagged `security`
 
 No copy-pasting findings, no re-explaining what's wrong. The report file is the contract between the audit and the fix.
+
+### Category Tags
+
+Every finding is tagged with 1-3 categories drawn from a fixed vocabulary so filtering and sweeps stay consistent across audits:
+
+| Tag | Covers |
+|-----|--------|
+| `security` | Auth, secrets, injection, attack surface, supply chain |
+| `correctness` | Bugs, race conditions, wrong output, broken invariants |
+| `performance` | Slow paths, unnecessary work, resource contention |
+| `quality` | Naming, dead code, tech debt, consistency |
+| `operational` | Error handling, observability, logging, graceful shutdown |
+| `testing` | Coverage gaps, weak assertions, missing integration tests |
+| `documentation` | Missing or misleading docs, DX, onboarding friction |
+| `architecture` | Module boundaries, abstractions, system design |
+
+The report includes a **Findings by Category** section listing counts per tag. The delta section groups resolved/new by category so you can see at a glance whether security debt is shrinking or growing.
 
 ### Baseline Tracking
 

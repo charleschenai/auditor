@@ -99,7 +99,7 @@ Launch **8 Sonnet agents in parallel** — one per reviewer.
 > 4. For each finding, suggest a direction for fixing it — specific enough that another Claude session can start coding without re-investigating.
 > 5. If there's a goal, evaluate how the codebase measures up.
 >
-> Return your findings as a numbered list. Each finding MUST have four fields — Problem, Files, Fix, and Effort — each on its own line with a blank line between findings:
+> Return your findings as a numbered list. Each finding MUST have five fields — Problem, Files, Fix, Effort, and Tags — each on its own line with a blank line between findings:
 >
 > 1. [severity: critical or standard]
 >
@@ -111,7 +111,11 @@ Launch **8 Sonnet agents in parallel** — one per reviewer.
 >
 >    Effort: [small / medium / large — rough estimate of fix complexity]
 >
+>    Tags: [1-3 category tags, comma-separated, drawn from this fixed vocabulary: security, correctness, performance, quality, operational, testing, documentation, architecture]
+>
 > The Fix line is the most important. Don't say "add error handling" — say "wrap the spawn calls in web.rs:handle_upload() with a timeout and map the error to a 413 response." The more specific the fix direction, the more useful this audit is.
+>
+> Tag guidance: security (auth, secrets, injection, supply chain), correctness (bugs, wrong output, race conditions), performance (slow paths, unnecessary work), quality (naming, dead code, tech debt), operational (error handling, observability, logging), testing (coverage, test quality), documentation (docs, DX, onboarding), architecture (design, boundaries, modularity). Pick the 1-3 that best fit — don't tag everything as "quality."
 >
 > Also return:
 > - 2-3 bullet points on what's done well
@@ -153,6 +157,8 @@ After all agents return, merge everything into one unified report. Do NOT break 
 
 **Effort:** [small / medium / large]
 
+**Tags:** [1-3 from: security, correctness, performance, quality, operational, testing, documentation, architecture]
+
 ---
 
 ### 2. [CRITICAL]
@@ -164,6 +170,8 @@ After all agents return, merge everything into one unified report. Do NOT break 
 **Fix:** [specific direction]
 
 **Effort:** [small / medium / large]
+
+**Tags:** [category tags]
 
 ---
 
@@ -177,9 +185,18 @@ After all agents return, merge everything into one unified report. Do NOT break 
 
 **Effort:** [small / medium / large]
 
+**Tags:** [category tags]
+
 ---
 
 [... all findings numbered sequentially, critical first then standard, deduplicated across reviewers]
+
+## Findings by Category
+
+- **security:** #1, #4, #9 (3)
+- **correctness:** #2, #7 (2)
+- **testing:** #5, #12, #14 (3)
+- **[other tags with counts and finding numbers, omit tags with zero findings]**
 
 ## Goal: <goal> (if specified)
 
@@ -211,10 +228,15 @@ If a previous audit report was found in Step 0, compare the two reports:
 **Persistent:** N findings
 
 ### Resolved
-- [#prev-N] [brief description of what was fixed]
+- [#prev-N] [security] [brief description of what was fixed]
 
 ### New
-- [#N] [brief description of new finding]
+- [#N] [testing] [brief description of new finding]
+
+### By Category
+- **security:** -2 resolved, +1 new (net -1)
+- **testing:** +2 new (net +2)
+- [only list categories with changes]
 ```
 
 ### Step 6: Chat Summary
@@ -232,35 +254,39 @@ Report: .audit/audit-report.md
 
 ### Top Findings
 
-1. [CRITICAL] <one-line problem summary> — <effort>
-2. [CRITICAL] <one-line problem summary> — <effort>
-3. [CRITICAL] <one-line problem summary> — <effort>
-4. [STANDARD] <one-line problem summary> — <effort>
-5. [STANDARD] <one-line problem summary> — <effort>
+1. [CRITICAL] [security] <one-line problem summary> — <effort>
+2. [CRITICAL] [correctness] <one-line problem summary> — <effort>
+3. [CRITICAL] [architecture] <one-line problem summary> — <effort>
+4. [STANDARD] [testing] <one-line problem summary> — <effort>
+5. [STANDARD] [operational] <one-line problem summary> — <effort>
 
 [if more findings: "... and N more in the full report"]
+
+By category: security (3) · correctness (2) · testing (4) · [other tags with counts]
 
 [if re-audit, show delta summary:
 "### Delta (vs <date>)"
 "Resolved: [list resolved findings, one line each]"
 "New: [list new findings, one line each]"]
 
-To fix a finding: "fix #3" or "fix all critical"
+To fix a finding: "fix #3", "fix all critical", or "fix all security"
 Full report: .audit/audit-report.md
 ```
 
 ### Step 7: Fix Mode
 
-After an audit, the user can request fixes by referencing finding numbers:
+After an audit, the user can request fixes by referencing finding numbers, severity, effort, or category tags:
 
 - `fix #3` — fix finding #3
 - `fix #1 #4 #7` — fix multiple specific findings
-- `fix all critical` — fix all critical findings
-- `fix all small` — fix all findings marked as small effort
+- `fix all critical` — fix all critical findings (both tags and standard combined)
+- `fix all small` — fix all findings marked as small effort (both severities combined)
+- `fix all security` — fix all findings tagged `security` (works for any tag from the vocabulary)
+- `fix all critical security` — intersect filters: critical severity AND security tag
 
 When the user requests a fix:
 
-1. **Read `.audit/audit-report.md`** to get the finding details (Problem, Files, Fix, Effort).
+1. **Read `.audit/audit-report.md`** to get the finding details (Problem, Files, Fix, Effort, Tags).
 2. **For each finding to fix**, launch a Sonnet agent with these tools: Read, Glob, Grep, Edit, Write, Bash.
 3. **Agent prompt:**
 
@@ -273,6 +299,8 @@ When the user requests a fix:
 > **Fix direction:** [from report]
 >
 > **Effort:** [from report]
+>
+> **Tags:** [from report]
 >
 > Your job:
 > 1. Read the files listed above and understand the current code.
@@ -292,6 +320,7 @@ When the user requests a fix:
 - Critical findings first, then standard.
 - Every finding MUST include a Files line listing 2-5 relevant file paths.
 - Every finding MUST include an Effort estimate (small / medium / large).
+- Every finding MUST include 1-3 Tags from the fixed vocabulary: security, correctness, performance, quality, operational, testing, documentation, architecture. Don't invent new tags. Don't tag every finding as "quality" — pick the tags that best describe the domain of the issue.
 - Fix directions must be specific enough that another Claude session can start coding without re-investigating. Name the function, module, or pattern to change.
 - Overall score = average of all reviewer scores, weighted: Architecture and Security count 1.5x.
 - The full report goes to `.audit/audit-report.md`. The chat gets a summary only.
