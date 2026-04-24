@@ -453,6 +453,20 @@ The plugin is intentionally a single file. Keep it that way.
 
 ---
 
+## Sister Plugins
+
+Auditor is part of a family of Claude Code plugins by the same author:
+
+| Plugin | What it does |
+|--------|--------------|
+| [**evolve**](https://github.com/charleschenai/evolve) | `/evolve` — autonomous iterative project improvement. Grinds through fix/clean/upgrade candidates one change at a time. Great continuation after `fix all critical` from an audit. |
+| [**codemap**](https://github.com/charleschenai/codemap) | AST-powered structural analysis (dead functions, orphan files, complexity, call graphs, taint). Auditor integrates codemap in v2.2.0+ to feed reviewers real structural ground truth instead of greping. |
+| [**second-opinion**](https://github.com/charleschenai/second-opinion) | `/so` — stress-tests a plan with 5 dynamically chosen expert reviewers before you start building. |
+
+Typical flow: `/audit` to survey → `fix all critical` to handle emergencies → `/evolve` to grind through the long tail → `/so` before any big architectural commit.
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
