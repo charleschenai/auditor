@@ -10,3 +10,6 @@
 [2026-04-24 06:36] upgrade: add confidence scoring with self-filtering of low-confidence standard findings
   source: triage - no way to distinguish high-signal findings from hypothetical concerns; reports included noise
 
+[2026-04-24 06:37] fix: same-day archive collision + baseline delta matching rules; bump to v2.2.0
+  source: triage - two clarity bugs: archive overwrite on same-day re-audit, and under-specified finding matching for delta
+

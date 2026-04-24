@@ -4,7 +4,7 @@ A Claude Code plugin that audits any codebase from 8 expert perspectives in para
 
 No configuration. No external dependencies. No API keys.
 
-**Version:** 2.1.0 | **License:** MIT
+**Version:** 2.2.0 | **License:** MIT
 
 ---
 

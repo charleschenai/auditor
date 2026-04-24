@@ -145,7 +145,7 @@ After all agents return, merge everything into one unified report. Do NOT break 
 
 1. **Create `.audit/` directory** in the repo root if it doesn't exist.
 2. **Write the full report** to `.audit/audit-report.md`.
-3. **If a previous report exists**, rename it to `.audit/audit-report-<YYYY-MM-DD>.md` before writing the new one.
+3. **If a previous report exists**, rename it to `.audit/audit-report-<YYYY-MM-DD>.md` before writing the new one. If an archive with that same date already exists (same-day re-audit), append `-HHMM` using the current time — e.g., `audit-report-2026-04-24-1430.md`. Never overwrite an existing archive.
 
 **Full report format (written to `.audit/audit-report.md`):**
 
@@ -235,12 +235,17 @@ After all agents return, merge everything into one unified report. Do NOT break 
 If a previous audit report was found in Step 0, compare the two reports:
 
 1. Read the previous report.
-2. Identify:
-   - **Resolved** — findings from the previous report that no longer appear
-   - **New** — findings in the current report that weren't in the previous one
-   - **Persistent** — findings that appear in both
+2. **Match findings across reports** using this priority order (findings are "the same" when any of these match):
+   a. **File overlap + problem similarity** — if ≥50% of the Files line overlaps AND the Problem describes the same underlying issue (even if worded differently), it's the same finding.
+   b. **Fix direction** — if the Fix line describes the same change (same function/module/pattern), it's the same finding.
+   c. **Problem text alone** is NOT sufficient for matching — different reviewers may phrase the same issue differently, but a vague phrasing match shouldn't count.
+   Finding numbers do NOT match across reports — numbers are assigned fresh each audit. Always match on file+problem+fix content.
+3. Identify:
+   - **Resolved** — findings from the previous report with no match in the current one
+   - **New** — findings in the current report with no match in the previous one
+   - **Persistent** — findings that matched between both reports
    - **Score change** — previous score vs current score
-3. Append a `## Delta` section to the end of `.audit/audit-report.md`:
+4. Append a `## Delta` section to the end of `.audit/audit-report.md`:
 
 ```markdown
 ## Delta (vs <previous date>)
@@ -249,6 +254,8 @@ If a previous audit report was found in Step 0, compare the two reports:
 **Resolved:** N findings
 **New:** N findings
 **Persistent:** N findings
+
+(Matching rule: findings are the same when ≥50% of Files overlap AND Problem describes the same issue, OR when the Fix directions describe the same change.)
 
 ### Resolved
 - [#prev-N] [security] [brief description of what was fixed]
