@@ -4,3 +4,6 @@
 [2026-04-24 06:34] upgrade: integrate codemap AST analysis into discovery step when available
   source: triage - dead-code/hotspot detection via grep is unreliable; codemap gives AST ground truth
 
+[2026-04-24 06:35] upgrade: fix-mode agent now verifies via project test/build command and auto-reverts on failure
+  source: triage - fix mode was fire-and-forget; no guarantee code still compiles
+

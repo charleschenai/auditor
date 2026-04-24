@@ -320,10 +320,17 @@ When the user requests a fix:
 > 2. Implement the fix described in the fix direction.
 > 3. Keep changes minimal — fix exactly this issue, don't refactor surrounding code.
 > 4. If the fix requires changes to files not listed, that's fine — but stay focused on this finding.
-> 5. Return a summary of what you changed.
+> 5. **Verify the fix.** Before reporting, run the project's verification command and capture pass/fail:
+>    - Rust: `cargo check && cargo test --no-run` (compile first; skip if too slow)
+>    - Node/TS: `npm test` or `bun test` (fall back to `tsc --noEmit` if no test script)
+>    - Python: `pytest -x --tb=short` (fall back to `python -m py_compile` on changed files)
+>    - Go: `go build ./... && go test ./...`
+>    - If no recognized toolchain, run any obvious build/test command named in README or package manifest
+>    - If the project has no test/build command at all, skip this step and note it in the summary
+> 6. Return a summary of what you changed AND the verification outcome (command run, pass/fail, any new failures). If verification fails due to your change, revert with `git checkout -- .` and report the failure — do not leave broken code.
 
 4. **If fixing multiple findings**, launch fix agents in parallel where the findings don't overlap on the same files. If two findings touch the same files, fix them sequentially.
-5. **After all fixes complete**, report what was fixed in chat.
+5. **After all fixes complete**, report what was fixed in chat, including a verification column (✓ passed / ✗ reverted / — skipped).
 6. **Do NOT automatically re-audit.** The user can run `/audit` again if they want to see the new score.
 
 ## Rules
