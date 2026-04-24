@@ -42,6 +42,19 @@ The agent should run `git diff <base>...HEAD --name-only` to get the list of cha
 **If normal mode:**
 The agent must return a structured codebase profile covering: language, framework, project type, size, directory structure (3 levels), key files, core abstractions, public API surface, dependencies, test infrastructure, documentation state, and git health. Keep it factual and concise.
 
+**Codemap enrichment (if available):**
+If `codemap` is on PATH (check with `which codemap`), the discovery agent must also run these AST-level analyses and include the results in the profile under a **"Codemap Signal"** section:
+
+```bash
+codemap --dir <repo> dead-functions           # unused exports
+codemap --dir <repo> orphan-files             # disconnected files
+codemap --dir <repo> complexity . | head -30  # complexity hotspots
+codemap --dir <repo> hotspots                 # most-connected code
+codemap --dir <repo> unreachable              # dead code paths
+```
+
+Include the top 10-20 items from each output in the profile — this is structural ground truth that every reviewer will use. The Staff Engineer, Principal Architect, and SRE reviewers should be told explicitly to cross-reference the Codemap Signal against their own exploration rather than greping from scratch. If `--diff` mode is active, also run `codemap --dir <repo> blast-radius <changed-files>` to scope the ripple of changes. If codemap isn't available, skip this section entirely and reviewers fall back to Glob/Grep heuristics.
+
 ### Step 2: Assemble the Team
 
 Pick **8 reviewers** based on the codebase profile and goal.

@@ -1,3 +1,6 @@
 [2026-04-24 05:25] upgrade: add category tags to findings (security/correctness/performance/quality/operational/testing/documentation/architecture) with fix-by-tag support
   source: triage of v2.0.0 SKILL.md — no bugs, findings lacked category filter, v2.1.0 bump
 
+[2026-04-24 06:34] upgrade: integrate codemap AST analysis into discovery step when available
+  source: triage - dead-code/hotspot detection via grep is unreliable; codemap gives AST ground truth
+
